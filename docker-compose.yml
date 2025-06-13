@@ -1,0 +1,56 @@
+version: "3.8"
+
+networks:
+  logs: {}
+
+volumes:
+  loki_data: {} # penyimpanan index / chunks Loki
+
+services:
+  ###############################################################################
+  # 1) Loki  ──> backend log
+  ###############################################################################
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    command: -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - ./loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki_data:/loki
+    ports:
+      - "3100:3100" # ← Grafana eksternal akan mem‐point ke sini
+    networks:
+      - logs
+    restart: unless-stopped
+
+  ###############################################################################
+  # 2) Promtail  ──> syslog receiver & shipper ke Loki
+  ###############################################################################
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail
+    command: -config.file=/etc/promtail/promtail-config.yml
+    volumes:
+      - ./promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+    ports:
+      - "1514:1514/udp" # UDP syslog dari MikroTik
+      - "9080:9080" # (opsional) metrics / web UI promtail
+    networks:
+      - logs
+    restart: unless-stopped
+
+  ###############################################################################
+  # 3) syslog-ng  ──> menerima syslog & meneruskan ke Promtail file / TCP
+  ###############################################################################
+  syslog-ng:
+    image: balabit/syslog-ng:latest
+    container_name: syslog-ng
+    command: -edv # run foreground + debug + verbose
+    volumes:
+      - ./syslog-ng/syslog-ng.conf:/etc/syslog-ng/syslog-ng.conf:ro
+    ports:
+      - "514:514/udp" # Syslog klasik UDP
+      - "601:601/tcp" # Syslog TLS/TCP (jika dipakai)
+    networks:
+      - logs
+    restart: unless-stopped
