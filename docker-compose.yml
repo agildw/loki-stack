@@ -1,8 +1,4 @@
-networks:
-  logs: {}
-
-volumes:
-  loki_data: {} # penyimpanan index / chunks Loki
+version: "3"
 
 services:
   ###############################################################################
@@ -52,3 +48,9 @@ services:
     networks:
       - logs
     restart: unless-stopped
+
+networks:
+  logs: {}
+
+volumes:
+  loki_data: {} # penyimpanan index / chunks Loki
